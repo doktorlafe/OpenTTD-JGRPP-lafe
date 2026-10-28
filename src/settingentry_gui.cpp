@@ -783,6 +783,7 @@ SettingsContainer &GetSettingsTree()
 				construction->Add(new SettingEntry("gui.default_rail_road_type"));
 				construction->Add(new SettingEntry("gui.demolish_confirm_mode"));
 				construction->Add(new SettingEntry("gui.show_rail_polyline_tool"));
+				construction->Add(new SettingEntry("gui.build_double_track"));
 			}
 
 			SettingsPage *vehicle_windows = interface->Add(new SettingsPage(STR_CONFIG_SETTING_INTERFACE_VEHICLE_WINDOWS));

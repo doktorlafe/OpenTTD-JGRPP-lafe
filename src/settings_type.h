@@ -463,6 +463,7 @@ struct GUISettings : public TimeSettings {
 	bool        shorten_vehicle_view_status;                     ///< Show status text in vehicle view window
 	bool        hide_default_stop_location;                      ///< Hide default stop location for orders
 	bool        show_rail_polyline_tool;                         ///< Show rail polyline tool
+	bool        build_double_track;                              ///< Also build a parallel track when building rail
 	bool        show_running_costs_calendar_year;                ///< Show vehicle running costs in calendar years
 	bool        show_town_growth_status;                         ///< Show town growth status & sorting in town directory
 	bool        show_rail_road_cost_dropdown;                    ///< Show rail and road type cost in dropdown menus

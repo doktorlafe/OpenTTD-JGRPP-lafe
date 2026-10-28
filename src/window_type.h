@@ -849,6 +849,11 @@ enum class WindowClass : uint16_t {
 	 */
 	ModifierKeyToggle,
 
+	/**
+	 * Small status popup in the bottom-right corner.
+	 */
+	CornerStatusPopup,
+
 	End,              ///< End sentinel.
 	Invalid = 0xFFFF, ///< Invalid window.
 };

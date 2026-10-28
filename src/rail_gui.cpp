@@ -463,11 +463,118 @@ static RailTrackCommandContainer DoRailroadTrackCmd(TileIndex start_tile, TileIn
 	}
 }
 
+/* ---- Double track ---- */
+
+/** Rail toolbar hotkeys for double track (not linked to a widget). */
+static const int HOTKEY_TOGGLE_DOUBLE_TRACK    = 0x1100;
+static const int HOTKEY_FLIP_DOUBLE_TRACK_SIDE = 0x1101;
+
+static bool _double_track_flip_side = false; ///< Build the parallel track on the other side.
+
+enum CornerStatusPopupWidgets : WidgetID {
+	WID_CSP_MESSAGE,
+};
+
+static constexpr std::initializer_list<NWidgetPart> _nested_corner_status_popup_widgets = {
+	NWidget(WWT_PANEL, Colours::DarkGreen),
+		NWidget(WWT_EMPTY, Colours::Invalid, WID_CSP_MESSAGE), SetPadding(WidgetDimensions::unscaled.modalpopup), SetFill(1, 0),
+	EndContainer(),
+};
+
+static WindowDesc _corner_status_popup_desc(__FILE__, __LINE__,
+	WindowPosition::Manual, nullptr, 0, 0,
+	WindowClass::CornerStatusPopup, WindowClass::None,
+	{},
+	_nested_corner_status_popup_widgets
+);
+
+/** Small message that shows briefly in the bottom-right corner, out of the way. */
+struct CornerStatusPopupWindow : Window {
+	std::string text;
+	uint remaining_ms = 1500;
+
+	CornerStatusPopupWindow(std::string &&text) : Window(_corner_status_popup_desc), text(std::move(text))
+	{
+		this->InitNested(0);
+	}
+
+	void UpdateWidgetSize(WidgetID widget, Dimension &size, const Dimension &padding, [[maybe_unused]] Dimension &fill, [[maybe_unused]] Dimension &resize) override
+	{
+		if (widget != WID_CSP_MESSAGE) return;
+		Dimension d = GetStringBoundingBox(this->text);
+		d.width += padding.width;
+		d.height += padding.height;
+		size = maxdim(size, d);
+	}
+
+	Point OnInitialPosition(int16_t sm_width, int16_t sm_height, [[maybe_unused]] int window_number) override
+	{
+		const int margin = ScaleGUITrad(8);
+		return { _screen.width - sm_width - margin, GetMainViewBottom() - sm_height - margin };
+	}
+
+	void DrawWidget(const Rect &r, WidgetID widget) const override
+	{
+		if (widget == WID_CSP_MESSAGE) DrawStringMultiLineWithClipping(r, this->text, TextColour::White, {AlignmentH::Centre, AlignmentV::Middle});
+	}
+
+	void OnRealtimeTick(uint delta_ms) override
+	{
+		if (delta_ms >= this->remaining_ms) {
+			this->Close();
+		} else {
+			this->remaining_ms -= delta_ms;
+		}
+	}
+};
+
+static void ShowCornerStatusPopup(StringID str)
+{
+	CloseWindowById(WindowClass::CornerStatusPopup, 0);
+	new CornerStatusPopupWindow(GetString(str));
+}
+
+/**
+ * Build the second track of a double track.
+ * Straight tracks get a copy on the neighbouring tiles; diagonal tracks
+ * get the opposite half-track on the same tiles (or, when flipped, the
+ * touching half of the neighbouring tiles on the other side).
+ */
+static void BuildParallelTrack(TileIndex start, TileIndex end, Track track)
+{
+	int side = _double_track_flip_side ? -1 : 1;
+	int dx = 0, dy = 0;
+	Track other = track;
+	switch (track) {
+		case TRACK_X:     dy = side; break;
+		case TRACK_Y:     dx = side; break;
+		case TRACK_UPPER: other = TRACK_LOWER; if (side < 0) { dx = -1; dy = -1; } break;
+		case TRACK_LOWER: other = TRACK_UPPER; if (side < 0) { dx =  1; dy =  1; } break;
+		case TRACK_LEFT:  other = TRACK_RIGHT; if (side < 0) { dx =  1; dy = -1; } break;
+		case TRACK_RIGHT: other = TRACK_LEFT;  if (side < 0) { dx = -1; dy =  1; } break;
+		default: return;
+	}
+
+	TileIndex s = TileAddWrap(start, dx, dy);
+	TileIndex e = TileAddWrap(end, dx, dy);
+	if (s == INVALID_TILE || e == INVALID_TILE) return;
+
+	CommandContainer<Commands::BuildRailLong> cmd(STR_ERROR_CAN_T_BUILD_RAILROAD_TRACK, e,
+			CmdPayload<Commands::BuildRailLong>::Make(s, _cur_railtype, other, GetBaseBuildRailTrackFlags(), false),
+			CommandCallback::PlaySound_CONSTRUCTION_RAIL);
+
+	/* Don't nag when the second track is already there (e.g. retracing a line). */
+	if (DoCommandContainer(cmd, {DoCommandFlag::Auto, DoCommandFlag::NoWater}).GetErrorMessage() == STR_ERROR_ALREADY_BUILT) return;
+	DoCommandPContainer(cmd);
+}
+
 static void HandleAutodirPlacement()
 {
 	Track track = (Track)(_thd.drawstyle & HT_DIR_MASK); // 0..5
 	TileIndex start_tile = TileVirtXY(_thd.selstart.x, _thd.selstart.y);
 	TileIndex end_tile = TileVirtXY(_thd.selend.x, _thd.selend.y);
+	const bool single_tile = (_thd.drawstyle & HT_RAIL) != 0;
+	const bool double_track = _settings_client.gui.build_double_track && !_remove_button_clicked;
 
 	RailTrackCommandContainer cmd = (_thd.drawstyle & HT_RAIL) ?
 			RailTrackCommandContainer(GenericPlaceRailCmd(end_tile, track)) : // one tile case
@@ -481,6 +588,8 @@ static void HandleAutodirPlacement()
 		/* place tracks */
 		if (!std::visit([](const auto &val) -> bool { return DoCommandPContainer(val); }, cmd)) return;
 	}
+
+	if (double_track) BuildParallelTrack(single_tile ? end_tile : start_tile, end_tile, track);
 
 	/* save new snap points for the polyline tool */
 	if (!_shift_pressed && _rail_track_endtile != INVALID_TILE) {
@@ -853,6 +962,17 @@ struct BuildRailToolbarWindow : Window {
 		MarkTileDirtyByTile(TileVirtXY(_thd.pos.x, _thd.pos.y)); // redraw tile selection
 
 		switch (hotkey) {
+			case HOTKEY_TOGGLE_DOUBLE_TRACK:
+				_settings_client.gui.build_double_track = !_settings_client.gui.build_double_track;
+				SetWindowClassesDirty(WindowClass::GameOptions);
+				ShowCornerStatusPopup(_settings_client.gui.build_double_track ? STR_RAIL_DOUBLE_TRACK_ON : STR_RAIL_DOUBLE_TRACK_OFF);
+				return EventState::Handled;
+
+			case HOTKEY_FLIP_DOUBLE_TRACK_SIDE:
+				_double_track_flip_side = !_double_track_flip_side;
+				ShowCornerStatusPopup(_double_track_flip_side ? STR_RAIL_DOUBLE_TRACK_SIDE_B : STR_RAIL_DOUBLE_TRACK_SIDE_A);
+				return EventState::Handled;
+
 			case HOTKEY_POLYRAIL:
 			case HOTKEY_NEW_POLYRAIL:
 				if (!_settings_client.gui.show_rail_polyline_tool) return EventState::Handled;
@@ -1121,6 +1241,8 @@ struct BuildRailToolbarWindow : Window {
 		Hotkey('R', "remove", WID_RAT_REMOVE),
 		Hotkey('C', "convert", WID_RAT_CONVERT_RAIL),
 		Hotkey(WKC_CTRL | 'C', "convert_track", WID_RAT_CONVERT_RAIL_TRACK),
+		Hotkey('D', "toggle_double_track", HOTKEY_TOGGLE_DOUBLE_TRACK),
+		Hotkey('F', "flip_double_track_side", HOTKEY_FLIP_DOUBLE_TRACK_SIDE),
 		Hotkey(WKC_L_BRACKET, "prev_railtype", to_underlying(SpecialListHotkeys::PreviousItem)),
 		Hotkey(WKC_R_BRACKET, "next_railtype", to_underlying(SpecialListHotkeys::NextItem)),
 		Hotkey(WKC_L_BRACKET | WKC_CTRL, "first_railtype", to_underlying(SpecialListHotkeys::FirstItem)),

@@ -2010,3 +2010,11 @@ STR_INTRO_TOOLTIP_NEWGRF_SETTINGS                               :{BLACK}Otevří
 STR_INTRO_TOOLTIP_AI_SETTINGS                                   :{BLACK}Otevřít nastavení AI
 STR_INTRO_TOOLTIP_GAMESCRIPT_SETTINGS                           :{BLACK}Otevřít nastavení herních skriptů
 STR_INTRO_CAPTION_TRADITIONAL                                   :{WHITE}OpenTTD {REV}
+
+# Double track
+STR_CONFIG_SETTING_BUILD_DOUBLE_TRACK                           :Stavět dvojkolej: {STRING}
+STR_CONFIG_SETTING_BUILD_DOUBLE_TRACK_HELPTEXT                  :Při stavbě železnice automaticky postavit vedle i druhou souběžnou kolej. V liště stavby železnice ji klávesa D zapíná a vypíná a F přehazuje stranu
+STR_RAIL_DOUBLE_TRACK_ON                                        :{WHITE}Dvojkolej: ZAPNUTO
+STR_RAIL_DOUBLE_TRACK_OFF                                       :{WHITE}Dvojkolej: VYPNUTO
+STR_RAIL_DOUBLE_TRACK_SIDE_A                                    :{WHITE}Dvojkolej: výchozí strana
+STR_RAIL_DOUBLE_TRACK_SIDE_B                                    :{WHITE}Dvojkolej: opačná strana
