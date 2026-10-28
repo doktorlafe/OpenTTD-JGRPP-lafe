@@ -536,31 +536,50 @@ static void ShowCornerStatusPopup(StringID str)
 
 /**
  * Build the second track of a double track.
- * Straight tracks get a copy on the neighbouring tiles; diagonal tracks
- * get the opposite half-track on the same tiles (or, when flipped, the
- * touching half of the neighbouring tiles on the other side).
+ * The second track is an exact copy of the first, shifted sideways by one tile,
+ * so it always has a valid shape. It goes to the right of the drag direction
+ * (as seen on screen), or to the left when flipped.
  */
 static void BuildParallelTrack(TileIndex start, TileIndex end, Track track)
 {
+	/* Drag direction in map coordinates. */
+	int a = (int)TileX(end) - (int)TileX(start);
+	int b = (int)TileY(end) - (int)TileY(start);
+	a = (a > 0) - (a < 0);
+	b = (b > 0) - (b < 0);
+	if (a == 0 && b == 0) {
+		/* Single tile: no drag direction, use a fixed default. */
+		switch (track) {
+			case TRACK_X: a = 1; break;
+			case TRACK_Y: b = 1; break;
+			case TRACK_UPPER: case TRACK_LOWER: a = 1; b = -1; break;
+			case TRACK_LEFT:  case TRACK_RIGHT: a = 1; b = 1; break;
+			default: return;
+		}
+	}
+
+	/* On screen, "right of travel" for map direction (a, b) is map direction (b, -a). */
 	int side = _double_track_flip_side ? -1 : 1;
 	int dx = 0, dy = 0;
-	Track other = track;
 	switch (track) {
-		case TRACK_X:     dy = side; break;
-		case TRACK_Y:     dx = side; break;
-		case TRACK_UPPER: other = TRACK_LOWER; if (side < 0) { dx = -1; dy = -1; } break;
-		case TRACK_LOWER: other = TRACK_UPPER; if (side < 0) { dx =  1; dy =  1; } break;
-		case TRACK_LEFT:  other = TRACK_RIGHT; if (side < 0) { dx =  1; dy = -1; } break;
-		case TRACK_RIGHT: other = TRACK_LEFT;  if (side < 0) { dx = -1; dy =  1; } break;
+		case TRACK_X: dy = -a * side; break;
+		case TRACK_Y: dx = b * side; break;
+		/* Diagonals: a shift of one tile along X lands the copy in the free halves
+		 * of the same tiles. Pick the sign that points to the right of travel. */
+		case TRACK_UPPER:
+		case TRACK_LOWER: dx = (b != 0 ? b : -a) * side; break;
+		case TRACK_LEFT:
+		case TRACK_RIGHT: dx = (b != 0 ? b : a) * side; break;
 		default: return;
 	}
+	if (dx == 0 && dy == 0) return;
 
 	TileIndex s = TileAddWrap(start, dx, dy);
 	TileIndex e = TileAddWrap(end, dx, dy);
 	if (s == INVALID_TILE || e == INVALID_TILE) return;
 
 	CommandContainer<Commands::BuildRailLong> cmd(STR_ERROR_CAN_T_BUILD_RAILROAD_TRACK, e,
-			CmdPayload<Commands::BuildRailLong>::Make(s, _cur_railtype, other, GetBaseBuildRailTrackFlags(), false),
+			CmdPayload<Commands::BuildRailLong>::Make(s, _cur_railtype, track, GetBaseBuildRailTrackFlags(), false),
 			CommandCallback::PlaySound_CONSTRUCTION_RAIL);
 
 	/* Don't nag when the second track is already there (e.g. retracing a line). */

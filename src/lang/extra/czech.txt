@@ -2016,5 +2016,5 @@ STR_CONFIG_SETTING_BUILD_DOUBLE_TRACK                           :Stavět dvojkol
 STR_CONFIG_SETTING_BUILD_DOUBLE_TRACK_HELPTEXT                  :Při stavbě železnice automaticky postavit vedle i druhou souběžnou kolej. V liště stavby železnice ji klávesa D zapíná a vypíná a F přehazuje stranu
 STR_RAIL_DOUBLE_TRACK_ON                                        :{WHITE}Dvojkolej: ZAPNUTO
 STR_RAIL_DOUBLE_TRACK_OFF                                       :{WHITE}Dvojkolej: VYPNUTO
-STR_RAIL_DOUBLE_TRACK_SIDE_A                                    :{WHITE}Dvojkolej: výchozí strana
-STR_RAIL_DOUBLE_TRACK_SIDE_B                                    :{WHITE}Dvojkolej: opačná strana
+STR_RAIL_DOUBLE_TRACK_SIDE_A                                    :{WHITE}Dvojkolej: vpravo
+STR_RAIL_DOUBLE_TRACK_SIDE_B                                    :{WHITE}Dvojkolej: vlevo
