@@ -1260,7 +1260,7 @@ struct BuildRailToolbarWindow : Window {
 		Hotkey('R', "remove", WID_RAT_REMOVE),
 		Hotkey('C', "convert", WID_RAT_CONVERT_RAIL),
 		Hotkey(WKC_CTRL | 'C', "convert_track", WID_RAT_CONVERT_RAIL_TRACK),
-		Hotkey('D', "toggle_double_track", HOTKEY_TOGGLE_DOUBLE_TRACK),
+		Hotkey('G', "toggle_double_track", HOTKEY_TOGGLE_DOUBLE_TRACK),
 		Hotkey('F', "flip_double_track_side", HOTKEY_FLIP_DOUBLE_TRACK_SIDE),
 		Hotkey(WKC_L_BRACKET, "prev_railtype", to_underlying(SpecialListHotkeys::PreviousItem)),
 		Hotkey(WKC_R_BRACKET, "next_railtype", to_underlying(SpecialListHotkeys::NextItem)),

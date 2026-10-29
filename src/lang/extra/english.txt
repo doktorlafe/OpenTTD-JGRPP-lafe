@@ -2620,7 +2620,7 @@ STR_STATION_CARGO_OVERFLOW                                      :{WHITE}{CARGO_L
 
 # Double track
 STR_CONFIG_SETTING_BUILD_DOUBLE_TRACK                           :Build double track: {STRING2}
-STR_CONFIG_SETTING_BUILD_DOUBLE_TRACK_HELPTEXT                  :When building rail, automatically build a second parallel track next to it. In the rail construction toolbar, D toggles this and F flips the side
+STR_CONFIG_SETTING_BUILD_DOUBLE_TRACK_HELPTEXT                  :When building rail, automatically build a second parallel track next to it. In the rail construction toolbar, G toggles this and F flips the side
 STR_RAIL_DOUBLE_TRACK_ON                                        :{WHITE}Double track: ON
 STR_RAIL_DOUBLE_TRACK_OFF                                       :{WHITE}Double track: OFF
 STR_RAIL_DOUBLE_TRACK_SIDE_A                                    :{WHITE}Double track: right side
