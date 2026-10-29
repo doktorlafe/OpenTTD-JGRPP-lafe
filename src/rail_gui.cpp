@@ -540,7 +540,7 @@ static void ShowCornerStatusPopup(StringID str)
  * so it always has a valid shape. It goes to the right of the drag direction
  * (as seen on screen), or to the left when flipped.
  */
-static void BuildParallelTrack(TileIndex start, TileIndex end, Track track)
+static bool GetDoubleTrackOffset(TileIndex start, TileIndex end, Track track, int &dx, int &dy)
 {
 	/* Drag direction in map coordinates. */
 	int a = (int)TileX(end) - (int)TileX(start);
@@ -554,13 +554,14 @@ static void BuildParallelTrack(TileIndex start, TileIndex end, Track track)
 			case TRACK_Y: b = 1; break;
 			case TRACK_UPPER: case TRACK_LOWER: a = 1; b = -1; break;
 			case TRACK_LEFT:  case TRACK_RIGHT: a = 1; b = 1; break;
-			default: return;
+			default: return false;
 		}
 	}
 
 	/* On screen, "right of travel" for map direction (a, b) is map direction (b, -a). */
 	int side = _double_track_flip_side ? -1 : 1;
-	int dx = 0, dy = 0;
+	dx = 0;
+	dy = 0;
 	switch (track) {
 		case TRACK_X: dy = -a * side; break;
 		case TRACK_Y: dx = b * side; break;
@@ -570,9 +571,40 @@ static void BuildParallelTrack(TileIndex start, TileIndex end, Track track)
 		case TRACK_LOWER: dx = (b != 0 ? b : -a) * side; break;
 		case TRACK_LEFT:
 		case TRACK_RIGHT: dx = (b != 0 ? b : a) * side; break;
-		default: return;
+		default: return false;
 	}
-	if (dx == 0 && dy == 0) return;
+	return dx != 0 || dy != 0;
+}
+
+/**
+ * Whether the rail toolbar is currently placing track that will get a second, parallel track.
+ * Used to draw a preview of the second track.
+ */
+bool IsDoubleTrackPreviewActive()
+{
+	if (!_settings_client.gui.build_double_track || _remove_button_clicked) return false;
+	const Window *w = FindWindowById(WindowClass::BuildToolbar, TransportType::Rail);
+	if (w == nullptr) return false;
+	for (WidgetID wid : {WID_RAT_BUILD_NS, WID_RAT_BUILD_X, WID_RAT_BUILD_EW, WID_RAT_BUILD_Y, WID_RAT_AUTORAIL, WID_RAT_POLYRAIL}) {
+		if (w->IsWidgetLowered(wid)) return true;
+	}
+	return false;
+}
+
+/**
+ * Sideways offset (in tiles) of the second track preview for a highlighted line.
+ * @return false when there is no second track to show.
+ */
+bool GetDoubleTrackPreviewOffset(Point selstart, Point selend, HighLightStyle dir, int &dx, int &dy)
+{
+	if (dir >= HT_DIR_END) return false;
+	return GetDoubleTrackOffset(TileVirtXY(selstart.x, selstart.y), TileVirtXY(selend.x, selend.y), (Track)dir, dx, dy);
+}
+
+static void BuildParallelTrack(TileIndex start, TileIndex end, Track track)
+{
+	int dx, dy;
+	if (!GetDoubleTrackOffset(start, end, track, dx, dy)) return;
 
 	TileIndex s = TileAddWrap(start, dx, dy);
 	TileIndex e = TileAddWrap(end, dx, dy);
@@ -984,11 +1016,13 @@ struct BuildRailToolbarWindow : Window {
 			case HOTKEY_TOGGLE_DOUBLE_TRACK:
 				_settings_client.gui.build_double_track = !_settings_client.gui.build_double_track;
 				SetWindowClassesDirty(WindowClass::GameOptions);
+				MarkWholeScreenDirty(); // update the second track preview
 				ShowCornerStatusPopup(_settings_client.gui.build_double_track ? STR_RAIL_DOUBLE_TRACK_ON : STR_RAIL_DOUBLE_TRACK_OFF);
 				return EventState::Handled;
 
 			case HOTKEY_FLIP_DOUBLE_TRACK_SIDE:
 				_double_track_flip_side = !_double_track_flip_side;
+				MarkWholeScreenDirty(); // update the second track preview
 				ShowCornerStatusPopup(_double_track_flip_side ? STR_RAIL_DOUBLE_TRACK_SIDE_B : STR_RAIL_DOUBLE_TRACK_SIDE_A);
 				return EventState::Handled;
 

@@ -139,6 +139,10 @@
 #include "table/strings.h"
 #include "table/string_colours.h"
 
+/* Double track preview, see rail_gui.cpp. */
+bool IsDoubleTrackPreviewActive();
+bool GetDoubleTrackPreviewOffset(Point selstart, Point selend, HighLightStyle dir, int &dx, int &dy);
+
 #include "safeguards.h"
 
 Point _tile_fract_coords;
@@ -1832,6 +1836,15 @@ static void DrawTileSelection(const TileInfo *ti)
 				assert((_thd.drawstyle & HT_DIR_MASK) < HT_DIR_END);
 				DrawAutorailSelection(ti, _thd.drawstyle & HT_DIR_MASK);
 			}
+			if (IsDoubleTrackPreviewActive()) {
+				/* Second track of a double track, one tile to the side. */
+				int dx, dy;
+				if (GetDoubleTrackPreviewOffset(_thd.pos, _thd.pos, _thd.drawstyle & HT_DIR_MASK, dx, dy) &&
+						ti->x == (int)(_thd.pos.x & ~TILE_UNIT_MASK) + dx * (int)TILE_SIZE &&
+						ti->y == (int)(_thd.pos.y & ~TILE_UNIT_MASK) + dy * (int)TILE_SIZE) {
+					DrawAutorailSelection(ti, _thd.drawstyle & HT_DIR_MASK);
+				}
+			}
 			break;
 
 		case HT_LINE: {
@@ -1841,6 +1854,18 @@ static void DrawTileSelection(const TileInfo *ti)
 			} else if (_thd.dir2 < HT_DIR_END) {
 				type = GetPartOfAutoLine(ti->x, ti->y, _thd.selstart2, _thd.selend2, _thd.dir2);
 				if (type < HT_DIR_END) DrawAutorailSelection(ti, type, PALETTE_SEL_TILE_BLUE);
+			}
+			if (IsDoubleTrackPreviewActive()) {
+				/* Second track of a double track: the same line, one tile to the side. */
+				int dx, dy;
+				if (GetDoubleTrackPreviewOffset(_thd.selstart, _thd.selend, _thd.drawstyle & HT_DIR_MASK, dx, dy)) {
+					type = GetPartOfAutoLine(ti->x - dx * (int)TILE_SIZE, ti->y - dy * (int)TILE_SIZE, _thd.selstart, _thd.selend, _thd.drawstyle & HT_DIR_MASK);
+					if (type < HT_DIR_END) DrawAutorailSelection(ti, type);
+				}
+				if (_thd.dir2 < HT_DIR_END && GetDoubleTrackPreviewOffset(_thd.selstart2, _thd.selend2, _thd.dir2, dx, dy)) {
+					type = GetPartOfAutoLine(ti->x - dx * (int)TILE_SIZE, ti->y - dy * (int)TILE_SIZE, _thd.selstart2, _thd.selend2, _thd.dir2);
+					if (type < HT_DIR_END) DrawAutorailSelection(ti, type, PALETTE_SEL_TILE_BLUE);
+				}
 			}
 			break;
 		}
@@ -5084,6 +5109,14 @@ static void SetSelectionTilesDirty()
 			x_start += _thd.offs.x;
 			y_size  += _thd.outersize.y;
 			y_start += _thd.offs.y;
+		}
+
+		if ((_thd.drawstyle & (HT_LINE | HT_RAIL)) != 0 && IsDoubleTrackPreviewActive()) {
+			/* The second track preview is drawn up to one tile outside the selection. */
+			x_start -= TILE_SIZE;
+			y_start -= TILE_SIZE;
+			x_size += 2 * TILE_SIZE;
+			y_size += 2 * TILE_SIZE;
 		}
 
 		x_size -= TILE_SIZE;
